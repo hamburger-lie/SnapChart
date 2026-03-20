@@ -3,8 +3,12 @@
 定义前后端通信的 JSON 数据结构，确保 API 契约的严格性与强类型约束。
 """
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
+
+# ========== 图表数据相关 ==========
 
 class DatasetItem(BaseModel):
     """单个数据系列，例如柱状图中的一组柱子"""
@@ -38,3 +42,42 @@ class ErrorResponse(BaseModel):
     status: str = Field(default="error", description="响应状态")
     message: str = Field(..., description="错误描述信息")
     detail: str | None = Field(default=None, description="详细错误信息（调试用）")
+
+
+# ========== 自定义样式相关 ==========
+
+class StyleCreate(BaseModel):
+    """创建/更新样式的请求体"""
+
+    name: str = Field(..., min_length=1, max_length=100, description="样式名称")
+    chart_type: str = Field(..., description="图表类型")
+    echarts_option: dict = Field(..., description="ECharts 样式配置（JSON）")
+    data_snapshot: dict | None = Field(default=None, description="数据快照（用于预览）")
+    thumbnail: str | None = Field(default=None, description="缩略图 base64")
+
+
+class StyleResponse(BaseModel):
+    """单个样式的完整响应"""
+
+    id: str
+    name: str
+    chart_type: str
+    echarts_option: dict
+    data_snapshot: dict | None = None
+    thumbnail: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class StyleListItem(BaseModel):
+    """样式列表项（不含完整 option，节省带宽）"""
+
+    id: str
+    name: str
+    chart_type: str
+    thumbnail: str | None = None
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}

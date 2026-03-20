@@ -17,8 +17,11 @@ class Settings(BaseSettings):
     upload_dir: str = "./uploads"
     max_file_size_mb: int = 20
 
+    # 数据库配置
+    database_url: str = "sqlite+aiosqlite:///./data/styles.db"
+
     # CORS 配置
-    cors_origins: str = "http://localhost:5173,http://localhost:3000"
+    cors_origins: str = "http://localhost:5174,http://localhost:3000"
 
     @property
     def cors_origin_list(self) -> list[str]:

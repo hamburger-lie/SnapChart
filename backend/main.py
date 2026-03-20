@@ -1,16 +1,18 @@
 """
-数据解析与图表可视化系统 - 后端入口
-启动 FastAPI 应用，注册路由和中间件。
+数据解析与图表可视化编辑器 - 后端入口
+启动 FastAPI 应用，注册路由、中间件和数据库初始化。
 """
 
 import logging
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import chart
+from app.models.database import init_db
+from app.routers import chart, style
 
 # 配置日志格式
 logging.basicConfig(
@@ -20,14 +22,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期管理：启动时初始化数据库"""
+    logger.info("正在初始化数据库...")
+    await init_db()
+    logger.info("数据库初始化完成")
+    yield
+
+
 # 创建 FastAPI 应用实例
 app = FastAPI(
-    title="数据解析与图表可视化系统",
-    description="上传 Excel/CSV 表格文件，自动提取数据并生成可视化图表配置",
-    version="1.0.0",
+    title="SnapChart — 数据解析与图表可视化编辑器",
+    description="上传 Excel/CSV 表格，自动提取数据并提供所见即所得的图表编辑器",
+    version="2.0.0",
+    lifespan=lifespan,
 )
 
-# 配置 CORS 跨域中间件，允许前端访问
+# 配置 CORS 跨域中间件
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -38,14 +51,15 @@ app.add_middleware(
 
 # 注册路由模块
 app.include_router(chart.router)
+app.include_router(style.router)
 
 
 @app.get("/", tags=["系统"])
 async def root():
     """根路径健康检查"""
     return {
-        "service": "数据解析与图表可视化系统",
-        "version": "1.0.0",
+        "service": "SnapChart",
+        "version": "2.0.0",
         "status": "running",
     }
 
@@ -62,5 +76,5 @@ if __name__ == "__main__":
         "main:app",
         host=settings.app_host,
         port=settings.app_port,
-        reload=True,  # 开发模式下自动热重载
+        reload=True,
     )

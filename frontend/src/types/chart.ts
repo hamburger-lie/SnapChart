@@ -5,35 +5,35 @@
 
 /** 单个数据系列 */
 export interface DatasetItem {
-  name: string;     // 系列名称，如 "销量"
-  values: number[]; // 数值列表，与 labels 一一对应
+  name: string;
+  values: number[];
 }
 
 /** 图表核心数据结构（后端返回） */
 export interface ChartData {
-  chartType: "bar" | "line" | "pie"; // 后端推荐的图表类型
-  title: string;                      // 图表标题
-  labels: string[];                   // X 轴标签或饼图分类
-  datasets: DatasetItem[];            // 数据系列列表
+  chartType: "bar" | "line" | "pie";
+  title: string;
+  labels: string[];
+  datasets: DatasetItem[];
 }
 
-/** 上传成功的响应结构 */
+/** 上传成功的响应 */
 export interface ChartResponse {
   status: "success";
   data: ChartData;
 }
 
-/** 上传失败的响应结构 */
+/** 上传失败的响应 */
 export interface ErrorResponse {
   status: "error";
   message: string;
   detail?: string;
 }
 
-/** 页面状态枚举 */
+/** 页面状态 */
 export type AppStatus = "idle" | "uploading" | "success" | "error";
 
-/** 前端支持的所有图表类型（比后端更丰富） */
+/** 前端支持的所有图表类型 */
 export type DisplayChartType = "bar" | "line" | "stackedArea" | "pie" | "scatter";
 
 /** 色彩主题标识 */
@@ -44,4 +44,34 @@ export interface ColorTheme {
   id: ColorThemeId;
   name: string;
   colors: string[];
+}
+
+/** 样式创建请求 */
+export interface StyleCreate {
+  name: string;
+  chart_type: string;
+  echarts_option: Record<string, unknown>;
+  data_snapshot?: Record<string, unknown> | null;
+  thumbnail?: string | null;
+}
+
+/** 样式完整响应 */
+export interface StyleResponse {
+  id: string;
+  name: string;
+  chart_type: string;
+  echarts_option: Record<string, unknown>;
+  data_snapshot?: Record<string, unknown> | null;
+  thumbnail?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** 样式列表项 */
+export interface StyleListItem {
+  id: string;
+  name: string;
+  chart_type: string;
+  thumbnail?: string | null;
+  updated_at: string;
 }
