@@ -33,8 +33,15 @@ export interface ErrorResponse {
 /** 页面状态 */
 export type AppStatus = "idle" | "uploading" | "success" | "error";
 
-/** 前端支持的所有图表类型 */
-export type DisplayChartType = "bar" | "line" | "stackedArea" | "pie" | "scatter";
+/** 前端支持的所有图表类型（含子类型） */
+export type DisplayChartType =
+  | "bar" | "stackedBar" | "negativeBar"
+  | "line" | "smoothLine" | "gradientArea" | "stackedArea"
+  | "pie" | "doughnut" | "rose"
+  | "scatter";
+
+/** 图表大类（用于模板分组） */
+export type ChartCategory = "bar" | "line" | "pie" | "scatter";
 
 /** 色彩主题标识 */
 export type ColorThemeId = "business" | "vibrant" | "morandi" | "ocean";

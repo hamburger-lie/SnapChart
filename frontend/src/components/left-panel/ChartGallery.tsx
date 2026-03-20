@@ -1,33 +1,15 @@
 /**
- * 左侧图表画廊
- * 提供图表类型缩略图选择 + 已保存的自定义样式列表
+ * 左侧图表模板画廊（重构版）
+ * 按 柱状图 / 折线图 / 饼图 / 散点图 大类分组
+ * 每组内展示多个模板变体（基础、堆叠、渐变等）
+ * 点击模板仅切换视觉配置，绝不清空用户数据
  */
 
-import { useEffect } from "react";
-import {
-  BarChart3,
-  LineChart,
-  PieChart,
-  Layers,
-  CircleDot,
-  Trash2,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import { useEditorStore } from "../../store";
+import { TEMPLATE_GROUPS, type ChartTemplate, type TemplateGroup } from "../../constants/chartTemplates";
 import type { DisplayChartType } from "../../types/chart";
-
-/** 图表类型配置 */
-const CHART_TYPES: {
-  type: DisplayChartType;
-  label: string;
-  icon: React.ReactNode;
-  desc: string;
-}[] = [
-  { type: "bar",         label: "柱状图",     icon: <BarChart3 className="w-5 h-5" />,  desc: "分类对比" },
-  { type: "line",        label: "折线图",     icon: <LineChart className="w-5 h-5" />,   desc: "趋势变化" },
-  { type: "stackedArea", label: "面积堆叠图", icon: <Layers className="w-5 h-5" />,      desc: "占比趋势" },
-  { type: "pie",         label: "饼图",       icon: <PieChart className="w-5 h-5" />,    desc: "占比分布" },
-  { type: "scatter",     label: "散点图",     icon: <CircleDot className="w-5 h-5" />,   desc: "数据分布" },
-];
 
 export default function ChartGallery() {
   const chartType = useEditorStore((s) => s.chartType);
@@ -59,50 +41,37 @@ export default function ChartGallery() {
   };
 
   return (
-    <div className="p-4 space-y-6">
-      {/* 图表类型选择 */}
-      <div>
-        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
-          图表类型
-        </h3>
-        <div className="grid grid-cols-2 gap-2">
-          {CHART_TYPES.map(({ type, label, icon, desc }) => (
-            <button
-              key={type}
-              onClick={() => setChartType(type)}
-              className={`flex flex-col items-center gap-1.5 p-3 rounded-xl text-xs font-medium transition-all cursor-pointer ${
-                chartType === type
-                  ? "bg-blue-50 text-blue-700 border-2 border-blue-300 shadow-sm"
-                  : "bg-white text-gray-500 border border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              <span className={chartType === type ? "text-blue-500" : "text-gray-400"}>
-                {icon}
-              </span>
-              <span>{label}</span>
-              <span className={`text-[10px] ${chartType === type ? "text-blue-400" : "text-gray-400"}`}>
-                {desc}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="p-3 space-y-1">
+      {/* 标题 */}
+      <h3 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
+        图表模板
+      </h3>
+
+      {/* 按大类分组 */}
+      {TEMPLATE_GROUPS.map((group) => (
+        <TemplateGroupSection
+          key={group.category}
+          group={group}
+          currentType={chartType}
+          onSelect={setChartType}
+        />
+      ))}
 
       {/* 已保存的样式 */}
       {savedStyles.length > 0 && (
-        <div>
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
+        <div className="pt-3 border-t border-gray-100 mt-3">
+          <h3 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
             已保存样式
           </h3>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {savedStyles.map((style) => (
               <div
                 key={style.id}
-                className="group flex items-center justify-between p-2.5 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50/30 transition-colors cursor-pointer"
+                className="group flex items-center justify-between p-2 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50/30 transition-colors cursor-pointer"
                 onClick={() => handleLoadStyle(style.id)}
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-700 truncate">
+                  <p className="text-xs font-medium text-gray-700 truncate">
                     {style.name}
                   </p>
                   <p className="text-[10px] text-gray-400 uppercase">
@@ -116,7 +85,7 @@ export default function ChartGallery() {
                   }}
                   className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3 h-3" />
                 </button>
               </div>
             ))}
@@ -124,5 +93,93 @@ export default function ChartGallery() {
         </div>
       )}
     </div>
+  );
+}
+
+// ========== 模板分组折叠区 ==========
+
+function TemplateGroupSection({
+  group,
+  currentType,
+  onSelect,
+}: {
+  group: TemplateGroup;
+  currentType: DisplayChartType;
+  onSelect: (type: DisplayChartType) => void;
+}) {
+  // 如果当前选中的类型属于该组，默认展开
+  const isGroupActive = group.templates.some((t) => t.id === currentType);
+  const [expanded, setExpanded] = useState(isGroupActive);
+
+  // 当外部切换导致激活状态变化时自动展开
+  useEffect(() => {
+    if (isGroupActive) setExpanded(true);
+  }, [isGroupActive]);
+
+  return (
+    <div className="rounded-lg overflow-hidden">
+      {/* 分组标题 */}
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className={`w-full flex items-center gap-1.5 px-2 py-2 text-xs font-medium transition-colors cursor-pointer rounded-lg ${
+          isGroupActive
+            ? "text-blue-700 bg-blue-50/60"
+            : "text-gray-500 hover:bg-gray-100/60"
+        }`}
+      >
+        {expanded ? (
+          <ChevronDown className="w-3.5 h-3.5 shrink-0" />
+        ) : (
+          <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+        )}
+        <span>{group.label}</span>
+        <span className="text-[10px] text-gray-400 ml-auto">{group.templates.length}</span>
+      </button>
+
+      {/* 模板列表 */}
+      {expanded && (
+        <div className="grid grid-cols-2 gap-1.5 px-1 pb-2 pt-1">
+          {group.templates.map((template) => (
+            <TemplateCard
+              key={template.id}
+              template={template}
+              isActive={currentType === template.id}
+              onSelect={onSelect}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ========== 单个模板卡片 ==========
+
+function TemplateCard({
+  template,
+  isActive,
+  onSelect,
+}: {
+  template: ChartTemplate;
+  isActive: boolean;
+  onSelect: (type: DisplayChartType) => void;
+}) {
+  return (
+    <button
+      onClick={() => onSelect(template.id)}
+      className={`flex flex-col items-center gap-1 p-2 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
+        isActive
+          ? "bg-blue-50 text-blue-700 border-2 border-blue-300 shadow-sm"
+          : "bg-white text-gray-500 border border-gray-200 hover:border-blue-200 hover:bg-blue-50/30"
+      }`}
+      title={template.desc}
+    >
+      {/* 缩略图 SVG */}
+      <div
+        className="w-full h-8"
+        dangerouslySetInnerHTML={{ __html: template.thumbnail }}
+      />
+      <span className="leading-tight">{template.label}</span>
+    </button>
   );
 }

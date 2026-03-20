@@ -4,6 +4,7 @@
  */
 
 import { useEditorStore } from "../../store";
+import { getBaseChartType } from "../../constants/chartTemplates";
 
 /** 预设高度选项 */
 const HEIGHT_PRESETS = [
@@ -26,7 +27,7 @@ export default function SizeControl() {
   const setYAxisConfig = useEditorStore((s) => s.setYAxisConfig);
   const chartType = useEditorStore((s) => s.chartType);
 
-  const isPie = chartType === "pie";
+  const isPie = getBaseChartType(chartType) === "pie";
 
   return (
     <div className="space-y-5">

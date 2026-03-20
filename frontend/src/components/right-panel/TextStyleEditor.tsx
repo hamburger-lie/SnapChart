@@ -4,6 +4,7 @@
  */
 
 import { useEditorStore } from "../../store";
+import { getBaseChartType } from "../../constants/chartTemplates";
 
 export default function TextStyleEditor() {
   const title = useEditorStore((s) => s.title);
@@ -18,7 +19,7 @@ export default function TextStyleEditor() {
   const setYAxisName = useEditorStore((s) => s.setYAxisName);
   const chartType = useEditorStore((s) => s.chartType);
 
-  const isPie = chartType === "pie";
+  const isPie = getBaseChartType(chartType) === "pie";
 
   return (
     <div className="space-y-4">

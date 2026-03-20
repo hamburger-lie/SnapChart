@@ -22,6 +22,7 @@ import { CanvasRenderer } from "echarts/renderers";
 import { useEditorStore } from "../../store";
 import type { DatasetItem, DisplayChartType } from "../../types/chart";
 import type { TitleStyle, LegendConfig, GridPadding, XAxisConfig, YAxisConfig } from "../../types/editor";
+import { getBaseChartType } from "../../constants/chartTemplates";
 
 // 按需注册（新增 DataZoom）
 echarts.use([
@@ -236,13 +237,69 @@ function buildBarSeries(datasets: DatasetItem[]) {
   }));
 }
 
+function buildStackedBarSeries(datasets: DatasetItem[]) {
+  return datasets.map((ds) => ({
+    name: ds.name, type: "bar" as const, data: ds.values,
+    stack: "total", barMaxWidth: 40,
+    itemStyle: { borderRadius: [2, 2, 0, 0] },
+    emphasis: { focus: "series" as const },
+    animationDuration: 800, animationEasing: "cubicOut",
+  }));
+}
+
+function buildNegativeBarSeries(datasets: DatasetItem[], colors: string[]) {
+  // 对每个数据值，正值用第一色，负值用第二色
+  return datasets.map((ds) => ({
+    name: ds.name, type: "bar" as const, data: ds.values.map((v) => ({
+      value: v,
+      itemStyle: {
+        color: v >= 0 ? (colors[0] || "#2563eb") : (colors[1] || "#ef4444"),
+        borderRadius: v >= 0 ? [4, 4, 0, 0] : [0, 0, 4, 4],
+      },
+    })),
+    barMaxWidth: 40,
+    emphasis: { itemStyle: { shadowBlur: 10, shadowColor: "rgba(37, 99, 235, 0.3)" } },
+    animationDuration: 800, animationEasing: "cubicOut",
+  }));
+}
+
 function buildLineSeries(datasets: DatasetItem[]) {
   return datasets.map((ds) => ({
     name: ds.name, type: "line" as const, data: ds.values,
-    smooth: true, symbol: "circle", symbolSize: 6,
-    lineStyle: { width: 2.5 }, areaStyle: { opacity: 0 },
+    smooth: false, symbol: "circle", symbolSize: 6,
+    lineStyle: { width: 2.5 },
     animationDuration: 800, animationEasing: "cubicOut",
   }));
+}
+
+function buildSmoothLineSeries(datasets: DatasetItem[]) {
+  return datasets.map((ds) => ({
+    name: ds.name, type: "line" as const, data: ds.values,
+    smooth: true, symbol: "circle", symbolSize: 6,
+    lineStyle: { width: 2.5 },
+    animationDuration: 800, animationEasing: "cubicOut",
+  }));
+}
+
+function buildGradientAreaSeries(datasets: DatasetItem[], colors: string[]) {
+  return datasets.map((ds, idx) => {
+    const baseColor = colors[idx % colors.length] || "#2563eb";
+    return {
+      name: ds.name, type: "line" as const, data: ds.values,
+      smooth: true, symbol: "circle", symbolSize: 5,
+      lineStyle: { width: 2.5, color: baseColor },
+      areaStyle: {
+        color: {
+          type: "linear" as const, x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: baseColor + "80" },
+            { offset: 1, color: baseColor + "08" },
+          ],
+        },
+      },
+      animationDuration: 800, animationEasing: "cubicOut",
+    };
+  });
 }
 
 function buildStackedAreaSeries(datasets: DatasetItem[]) {
@@ -266,6 +323,34 @@ function buildPieSeries(
   const maxLen = xConfig.labelMaxLength;
 
   return [{
+    type: "pie" as const, radius: ["0%", "68%"], center: ["42%", "55%"],
+    data: pieData,
+    label: {
+      color: "#475569", fontSize: 12,
+      formatter: (params: { name: string; percent: number; value: number }) => {
+        const shortName = truncateLabel(params.name, maxLen);
+        const fmtVal = formatTooltipValue(params.value, numberFormat);
+        return `${shortName}\n${fmtVal} (${params.percent}%)`;
+      },
+    },
+    labelLine: { lineStyle: { color: "#cbd5e1" } },
+    itemStyle: { borderRadius: 6, borderColor: "#fff", borderWidth: 3 },
+    emphasis: { scaleSize: 8, itemStyle: { shadowBlur: 20, shadowColor: "rgba(0,0,0,0.15)" } },
+    animationType: "scale", animationDuration: 800, animationEasing: "cubicOut",
+  }];
+}
+
+function buildDoughnutSeries(
+  labels: string[],
+  datasets: DatasetItem[],
+  xConfig: XAxisConfig,
+  numberFormat: YAxisConfig["numberFormat"],
+) {
+  const ds = datasets[0];
+  const pieData = labels.map((l, i) => ({ name: l, value: ds?.values[i] ?? 0 }));
+  const maxLen = xConfig.labelMaxLength;
+
+  return [{
     type: "pie" as const, radius: ["40%", "68%"], center: ["42%", "55%"],
     data: pieData,
     label: {
@@ -279,6 +364,35 @@ function buildPieSeries(
     labelLine: { lineStyle: { color: "#cbd5e1" } },
     itemStyle: { borderRadius: 6, borderColor: "#fff", borderWidth: 3 },
     emphasis: { scaleSize: 8, itemStyle: { shadowBlur: 20, shadowColor: "rgba(0,0,0,0.15)" } },
+    animationType: "scale", animationDuration: 800, animationEasing: "cubicOut",
+  }];
+}
+
+function buildRoseSeries(
+  labels: string[],
+  datasets: DatasetItem[],
+  xConfig: XAxisConfig,
+  numberFormat: YAxisConfig["numberFormat"],
+) {
+  const ds = datasets[0];
+  const pieData = labels.map((l, i) => ({ name: l, value: ds?.values[i] ?? 0 }));
+  const maxLen = xConfig.labelMaxLength;
+
+  return [{
+    type: "pie" as const, radius: ["15%", "68%"], center: ["42%", "55%"],
+    roseType: "area" as const,
+    data: pieData,
+    label: {
+      color: "#475569", fontSize: 12,
+      formatter: (params: { name: string; percent: number; value: number }) => {
+        const shortName = truncateLabel(params.name, maxLen);
+        const fmtVal = formatTooltipValue(params.value, numberFormat);
+        return `${shortName}\n${fmtVal} (${params.percent}%)`;
+      },
+    },
+    labelLine: { lineStyle: { color: "#cbd5e1" } },
+    itemStyle: { borderRadius: 6, borderColor: "#fff", borderWidth: 2 },
+    emphasis: { scaleSize: 6, itemStyle: { shadowBlur: 20, shadowColor: "rgba(0,0,0,0.15)" } },
     animationType: "scale", animationDuration: 800, animationEasing: "cubicOut",
   }];
 }
@@ -315,8 +429,16 @@ function buildFullOption(
     toolbox: buildToolbox(title),
   };
 
-  // 饼图走独立路径
-  if (chartType === "pie") {
+  const baseType = getBaseChartType(chartType);
+
+  // 饼图类走独立路径（pie / doughnut / rose）
+  if (baseType === "pie") {
+    const pieBuildMap: Record<string, () => echarts.EChartsCoreOption["series"]> = {
+      pie:      () => buildPieSeries(labels, datasets, xAxisConfig, yAxisConfig.numberFormat),
+      doughnut: () => buildDoughnutSeries(labels, datasets, xAxisConfig, yAxisConfig.numberFormat),
+      rose:     () => buildRoseSeries(labels, datasets, xAxisConfig, yAxisConfig.numberFormat),
+    };
+
     return {
       ...base,
       tooltip: {
@@ -336,16 +458,20 @@ function buildFullOption(
         itemWidth: 12, itemHeight: 12, itemGap: 12,
         formatter: (name: string) => truncateLabel(name, xAxisConfig.labelMaxLength + 4),
       },
-      series: buildPieSeries(labels, datasets, xAxisConfig, yAxisConfig.numberFormat),
+      series: (pieBuildMap[chartType] || pieBuildMap.pie)(),
     };
   }
 
-  // 非饼图类型
+  // 非饼图类型（bar / line / scatter 及其子类型）
   const seriesMap: Record<string, () => echarts.EChartsCoreOption["series"]> = {
-    bar:         () => buildBarSeries(datasets),
-    line:        () => buildLineSeries(datasets),
-    stackedArea: () => buildStackedAreaSeries(datasets),
-    scatter:     () => buildScatterSeries(datasets),
+    bar:          () => buildBarSeries(datasets),
+    stackedBar:   () => buildStackedBarSeries(datasets),
+    negativeBar:  () => buildNegativeBarSeries(datasets, colors),
+    line:         () => buildLineSeries(datasets),
+    smoothLine:   () => buildSmoothLineSeries(datasets),
+    gradientArea: () => buildGradientAreaSeries(datasets, colors),
+    stackedArea:  () => buildStackedAreaSeries(datasets),
+    scatter:      () => buildScatterSeries(datasets),
   };
 
   // 数据量过多时自动启用滚动条
@@ -356,7 +482,7 @@ function buildFullOption(
 
   return {
     ...base,
-    tooltip: buildTooltip(chartType === "scatter" ? "item" : "axis", yAxisConfig.numberFormat),
+    tooltip: buildTooltip(baseType === "scatter" ? "item" : "axis", yAxisConfig.numberFormat),
     legend: buildLegend(legend),
     grid: buildGrid(gridPadding),
     xAxis: buildXAxis(labels, xAxisConfig, xAxisName),
@@ -433,7 +559,7 @@ export default function EditableChart() {
 
   // 数据变化时自动检测是否需要对数轴
   useEffect(() => {
-    if (datasets.length > 0 && chartType !== "pie") {
+    if (datasets.length > 0 && getBaseChartType(chartType) !== "pie") {
       const isSkewed = detectDataSkew(datasets);
       // 仅在检测到极端悬殊且当前不是对数轴时自动提示
       if (isSkewed && !yAxisConfig.useLogScale) {
